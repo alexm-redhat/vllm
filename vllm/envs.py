@@ -302,9 +302,11 @@ if TYPE_CHECKING:
     VLLM_DEBUG_WORKSPACE: bool = False
     VLLM_DISABLE_SHARED_EXPERTS_STREAM: bool = False
     VLLM_DISABLE_DSV4_MEGAMOE_SHARED_EXPERT_FUSION: bool = False
+    VLLM_DISABLE_FUSED_SHARED_EXPERTS: bool = False
     VLLM_DISABLE_FUSED_MXFP8_QUANT_GEMM: bool = False
     VLLM_DISABLE_LMHEAD_SKINNY_GEMM_GUARD: bool = False
     VLLM_SKINNY_GEMM_MAX_WEIGHT_BYTES: int = 256 * 1024 * 1024
+    VLLM_HETERO_SHARED_EXPERT_MIN_TOKENS: int = 16
     VLLM_SHARED_EXPERTS_STREAM_TOKEN_THRESHOLD: int = 256
     VLLM_MULTI_STREAM_GEMM_TOKEN_THRESHOLD: int = 1024
     VLLM_COMPILE_CACHE_SAVE_FORMAT: Literal["binary", "unpacked"] = "binary"
@@ -2110,6 +2112,14 @@ environment_variables: dict[str, Callable[[], Any]] = {
     # path a loss above L2-sized weights (measured at TP4 on MI355X).
     "VLLM_SKINNY_GEMM_MAX_WEIGHT_BYTES": lambda: int(
         os.getenv("VLLM_SKINNY_GEMM_MAX_WEIGHT_BYTES", str(256 * 1024 * 1024))
+    ),
+    # Heterogeneous fused shared experts: kill switch, and the prefill
+    # token count at which the fused path takes over.
+    "VLLM_DISABLE_FUSED_SHARED_EXPERTS": lambda: bool(
+        int(os.getenv("VLLM_DISABLE_FUSED_SHARED_EXPERTS", "0"))
+    ),
+    "VLLM_HETERO_SHARED_EXPERT_MIN_TOKENS": lambda: int(
+        os.getenv("VLLM_HETERO_SHARED_EXPERT_MIN_TOKENS", "16")
     ),
     # Limits when we run shared_experts in a separate stream.
     # We found out that for large batch sizes, the separate stream
