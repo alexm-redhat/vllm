@@ -307,6 +307,8 @@ if TYPE_CHECKING:
     VLLM_DISABLE_LMHEAD_SKINNY_GEMM_GUARD: bool = False
     VLLM_SKINNY_GEMM_MAX_WEIGHT_BYTES: int = 256 * 1024 * 1024
     VLLM_HETERO_SHARED_EXPERT_MIN_TOKENS: int = 16
+    VLLM_DISABLE_DRAFT_PREPARE_DEDUP: bool = False
+    VLLM_DISABLE_DFLASH_PREPARE_PAD_FIX: bool = False
     # Fused DSpark draft-sampling epilogue; the hot path reads this
     # directly from os.environ (baked at CUDA-graph capture), this
     # registration keeps the kill-var inventory complete.
@@ -2140,6 +2142,14 @@ environment_variables: dict[str, Callable[[], Any]] = {
     ),
     "VLLM_DRAFT_SAMPLING_FUSION_MAX_TOKENS": lambda: int(
         os.getenv("VLLM_DRAFT_SAMPLING_FUSION_MAX_TOKENS", "2")
+    ),
+    # Draft-prepare fastpaths (DSpark/dflash): shared-output dedup and
+    # the parallel pad-tail fix.
+    "VLLM_DISABLE_DRAFT_PREPARE_DEDUP": lambda: bool(
+        int(os.getenv("VLLM_DISABLE_DRAFT_PREPARE_DEDUP", "0"))
+    ),
+    "VLLM_DISABLE_DFLASH_PREPARE_PAD_FIX": lambda: bool(
+        int(os.getenv("VLLM_DISABLE_DFLASH_PREPARE_PAD_FIX", "0"))
     ),
     # Limits when we run shared_experts in a separate stream.
     # We found out that for large batch sizes, the separate stream
