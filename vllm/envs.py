@@ -307,6 +307,17 @@ if TYPE_CHECKING:
     VLLM_DISABLE_LMHEAD_SKINNY_GEMM_GUARD: bool = False
     VLLM_SKINNY_GEMM_MAX_WEIGHT_BYTES: int = 256 * 1024 * 1024
     VLLM_HETERO_SHARED_EXPERT_MIN_TOKENS: int = 16
+    # Fused DSpark draft-sampling epilogue; the hot path reads this
+    # directly from os.environ (baked at CUDA-graph capture), this
+    # registration keeps the kill-var inventory complete.
+    VLLM_DISABLE_DRAFT_SAMPLE_EPILOGUE_FUSION: bool = False
+    # Draft-batch gate shared by the fused draft-sampling levers (the
+    # markov GEMV and the sample epilogue): they win by launch
+    # elimination at tiny draft batches and lose to the stock chain
+    # above (the fused GEMV re-reads w2 per row), so they engage at
+    # num draft rows <= this gate. Read per call; baked per captured
+    # graph size.
+    VLLM_DRAFT_SAMPLING_FUSION_MAX_TOKENS: int = 2
     VLLM_SHARED_EXPERTS_STREAM_TOKEN_THRESHOLD: int = 256
     VLLM_MULTI_STREAM_GEMM_TOKEN_THRESHOLD: int = 1024
     VLLM_COMPILE_CACHE_SAVE_FORMAT: Literal["binary", "unpacked"] = "binary"
@@ -2120,6 +2131,15 @@ environment_variables: dict[str, Callable[[], Any]] = {
     ),
     "VLLM_HETERO_SHARED_EXPERT_MIN_TOKENS": lambda: int(
         os.getenv("VLLM_HETERO_SHARED_EXPERT_MIN_TOKENS", "16")
+    ),
+    # Fused DSpark draft sampling: kill switch, and the draft-batch
+    # gate (the measured crossover between the fused chain and the
+    # stock one at TP4 on MI355X).
+    "VLLM_DISABLE_DRAFT_SAMPLE_EPILOGUE_FUSION": lambda: bool(
+        int(os.getenv("VLLM_DISABLE_DRAFT_SAMPLE_EPILOGUE_FUSION", "0"))
+    ),
+    "VLLM_DRAFT_SAMPLING_FUSION_MAX_TOKENS": lambda: int(
+        os.getenv("VLLM_DRAFT_SAMPLING_FUSION_MAX_TOKENS", "2")
     ),
     # Limits when we run shared_experts in a separate stream.
     # We found out that for large batch sizes, the separate stream
