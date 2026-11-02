@@ -971,8 +971,12 @@ class MoriAll2AllManager(All2AllManagerBase):
             online_targets = getattr(
                 vllm_config.model_config.quantization_config, "targets", None
             )
+            # Ask the same scoped decision the MoE layer will make, so the
+            # sizing below cannot disagree with it.
+            from vllm._aiter_ops import rocm_aiter_ops
+
             may_fuse_shared_expert = (
-                envs.VLLM_ROCM_USE_AITER_FUSION_SHARED_EXPERTS
+                bool(rocm_aiter_ops.is_fusion_moe_shared_experts_enabled())
                 and "mxfp4" in (online_targets or {}).values()
             )
             heap_size = os.environ.setdefault(

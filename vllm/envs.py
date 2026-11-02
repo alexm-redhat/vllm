@@ -157,7 +157,7 @@ if TYPE_CHECKING:
     VLLM_ROCM_USE_AITER_FP8BMM: bool = False
     VLLM_ROCM_USE_AITER_FP4BMM: bool = False
     VLLM_ROCM_USE_AITER_UNIFIED_ATTENTION: bool = False
-    VLLM_ROCM_USE_AITER_FUSION_SHARED_EXPERTS: bool = False
+    VLLM_ROCM_USE_AITER_FUSION_SHARED_EXPERTS: bool = True
     VLLM_ROCM_USE_AITER_TRITON_GEMM: bool = True
     VLLM_ROCM_USE_SKINNY_GEMM: bool = True
     VLLM_ROCM_FP8_PADDING: bool = True
@@ -1424,9 +1424,15 @@ environment_variables: dict[str, Callable[[], Any]] = {
         in ("true", "1")
     ),
     # Whether to use aiter fusion shared experts ops.
-    # By default is disabled.
+    # Defaults to on for MI300 (gfx942) only, where it was measured: the shared
+    # expert then runs as one extra slot of the routed MoE kernel instead of a
+    # separate dense MLP. Other architectures keep the previous default unless
+    # the variable is set explicitly. The per-layer resolver
+    # (fused_moe/utils.py) still gates it on quantization compatibility and
+    # expert parallelism, so checkpoints that cannot use it are unaffected.
+    # Set to 0 to restore the old behaviour anywhere.
     "VLLM_ROCM_USE_AITER_FUSION_SHARED_EXPERTS": lambda: (
-        os.getenv("VLLM_ROCM_USE_AITER_FUSION_SHARED_EXPERTS", "False").lower()
+        os.getenv("VLLM_ROCM_USE_AITER_FUSION_SHARED_EXPERTS", "True").lower()
         in ("true", "1")
     ),
     # Whether to use aiter triton kernels for gemm ops.

@@ -2380,7 +2380,17 @@ class rocm_aiter_ops:
     @classmethod
     @if_aiter_supported
     def is_fusion_moe_shared_experts_enabled(cls) -> bool:
-        return cls.is_fused_moe_enabled() and cls._MOE_SHARED_EXPERTS_ENABLED
+        if not cls.is_fused_moe_enabled():
+            return False
+        # The default-on policy is scoped to MI300 (gfx942), the only
+        # architecture it was measured on; every other ROCm GPU keeps the
+        # previous default. Setting the variable explicitly always wins, so
+        # other architectures can still opt in (or out).
+        if "VLLM_ROCM_USE_AITER_FUSION_SHARED_EXPERTS" in os.environ:
+            return cls._MOE_SHARED_EXPERTS_ENABLED
+        from vllm.platforms.rocm import on_gfx942
+
+        return on_gfx942()
 
     @classmethod
     @if_aiter_supported

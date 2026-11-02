@@ -149,6 +149,15 @@ def resolve_layer_fused_shared_expert(
                     quant_key_str,
                     target_pattern,
                 )
+    if is_fused_shared_expert_enabled:
+        # The skip path warns once per cause; state the enabled decision
+        # too, so an operator can tell "not compatible" from "not requested"
+        # without inferring it from the absence of a warning.
+        logger.info_once(
+            "AITER fused shared experts are ENABLED for %s; "
+            "disable with VLLM_ROCM_USE_AITER_FUSION_SHARED_EXPERTS=0.",
+            _normalize_skip_reason(prefix),
+        )
     if skip_reason is not None:
         # Keep the full per-layer reason at debug level; the warning below is
         # deduplicated by cause so a long model logs it once.
